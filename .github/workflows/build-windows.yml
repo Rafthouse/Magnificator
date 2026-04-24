@@ -1,0 +1,67 @@
+name: Build Magnificator (Windows x64)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Windows x64 (VST3 + Standalone)
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Cache JUCE
+        id: cache-juce
+        uses: actions/cache@v4
+        with:
+          path: JUCE
+          key: juce-7.0.12
+
+      - name: Clone JUCE
+        if: steps.cache-juce.outputs.cache-hit != 'true'
+        shell: bash
+        run: git clone --depth 1 --branch 7.0.12 https://github.com/juce-framework/JUCE.git
+
+      - name: Configure CMake
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package VST3
+        shell: pwsh
+        run: |
+          $vst3 = "build/Magnificator_artefacts/Release/VST3/Magnificator.vst3"
+          if (-not (Test-Path $vst3)) { throw "VST3 bundle not found at $vst3" }
+          Compress-Archive -Path $vst3 -DestinationPath "Magnificator-VST3-Windows-x64.zip" -Force
+
+      - name: Package Standalone
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $exeDir = "build/Magnificator_artefacts/Release/Standalone"
+          if (Test-Path $exeDir) {
+            Compress-Archive -Path "$exeDir/*" -DestinationPath "Magnificator-Standalone-Windows-x64.zip" -Force
+          }
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: Magnificator-VST3-Windows-x64
+          path: Magnificator-VST3-Windows-x64.zip
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Upload Standalone
+        if: hashFiles('Magnificator-Standalone-Windows-x64.zip') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: Magnificator-Standalone-Windows-x64
+          path: Magnificator-Standalone-Windows-x64.zip
+          retention-days: 90
