@@ -38,7 +38,7 @@ private:
     juce::Label      reverbNameLabel;
 
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-    using ParamAttachment  = juce::AudioProcessorValueTreeState::ParameterAttachment;
+    using ParamAttachment = juce::ParameterAttachment;
 
     std::unique_ptr<SliderAttachment> dryWetAttach;
     std::unique_ptr<ParamAttachment>  magnifyAttach;
